@@ -8,28 +8,47 @@ $fn=60;
 
 tilt=6.0;
 padding = [u(1/8), u(1/8)];
-layout_dimensions = [layout_dimensions(key_layout).x + padding.x * 2, layout_dimensions(key_layout).y+padding.y*2];
 large_radius = u(1/2);
-medium_radius = u(1/4);
+medium_radius = u(3/8);
 small_radius = u(1/8);
 fillet_radius = u(1/16);
 key_clearance = u(1/32);
 min_height = 10;
-base_dimensions = [layout_dimensions.x, layout_dimensions.y * cos(tilt)];
-case_dimensions = [ base_dimensions.x + 2*large_radius, base_dimensions.y  + 2 * large_radius * cos(tilt)];
 bottom_thickness = 4;
 plate_thickness = 1.5;
+plate_depth = 7.6;
+plate_top = min_height + large_radius - plate_depth;
+
+plate_hole_diameter = 3.8;
+hole_depth = 4.25;
+hole_diameter = 3.2;
+layout_dimensions = [layout_dimensions(key_layout).x + padding.x * 2, layout_dimensions(key_layout).y+padding.y*2];
+base_dimensions = [layout_dimensions.x, layout_dimensions.y * cos(tilt)];
+case_dimensions = [ base_dimensions.x + 2*large_radius, base_dimensions.y  + 2 * large_radius * cos(tilt)];
 
 body();
-zmove(min_height) ymove(u(1/2)) xmove(u(1/2)) xrot(tilt) #plate();
+/* zmove(min_height) ymove(u(1/2)) xmove(u(1/2)) xrot(tilt) #plate(); */
+
+/* echo(layout_dimensions); */
+/* plate(); */
+/* plate_for_export(); */
+/* plate_cutouts(); */
+
+/* xrot(tilt) zmove(min_height)  layout_hole(); */
+/* xrot(tilt) zmove(min_height+large_radius)  plate(); */
 
 module body(){
-  xmove(large_radius) ymove(large_radius) difference(){
-    body_outside();
-    body_inside();
-    bottom();
-    zmove(min_height) rotate([tilt, 0,0])  layout_hole();
-  }
+    union() {
+      color("gray") difference(){
+        body_outside();
+        body_inside();
+        bottom();
+        zmove(min_height) xrot(tilt) layout_hole();
+        plate_cutouts();
+      }
+
+      color("silver") zmove(large_radius+min_height-9.1) xrot(tilt) plate();
+    }
 }
 
 module body_outside() {
@@ -82,62 +101,75 @@ module bottom(){
 
 module layout_hole(){
   zmove(-u(1/4)) xmove(padding.x) ymove(padding.y)
-  difference(){
-    union(){
-      for(key=key_layout){
-        translate([key_x(key)-key_clearance, u(3) - key_y(key)-key_clearance, 0]) cube([key_w(key)+2*key_clearance, key_h(key)+2*key_clearance, u(1)]);
+    difference(){
+      union(){
+        for(key=key_layout){
+          translate([key_x(key)-key_clearance, u(3) - key_y(key)-key_clearance, 0]) cube([key_w(key)+2*key_clearance, key_h(key)+2*key_clearance, u(1)]);
+        }
       }
+      xmove(u(3/4)-key_clearance) ymove(-key_clearance) fillet(fillet_radius, u(1));
+      xmove(-key_clearance) ymove(u(1)-key_clearance) fillet(fillet_radius, u(1));
+      xmove(-key_clearance) ymove(u(4)+key_clearance) fillet(fillet_radius, u(1), 270);
+      xmove(u(13 - 3/4)+key_clearance) ymove(-key_clearance) fillet(fillet_radius, u(1), 90);
+      ymove(u(1)-key_clearance) xmove(u(13)+key_clearance) fillet(fillet_radius, u(1), 90);
+      ymove(u(4)+key_clearance) xmove(u(13)+key_clearance) fillet(fillet_radius, u(1), 180);
     }
-    xmove(u(3/4)-key_clearance) ymove(-key_clearance) fillet(fillet_radius, u(1));
-    xmove(-key_clearance) ymove(u(1)-key_clearance) fillet(fillet_radius, u(1));
-    xmove(-key_clearance) ymove(u(4)+key_clearance) fillet(fillet_radius, u(1), 270);
-    xmove(u(13 - 3/4)+key_clearance) ymove(-key_clearance) fillet(fillet_radius, u(1), 90);
-    ymove(u(1)-key_clearance) xmove(u(13)+key_clearance) fillet(fillet_radius, u(1), 90);
-    ymove(u(4)+key_clearance) xmove(u(13)+key_clearance) fillet(fillet_radius, u(1), 180);
-  }
-  ymove(u(1)-key_clearance) xmove(u(13-3/4)+key_clearance) fillet(fillet_radius, u(1), 270);
-  ymove(u(1)-key_clearance) xmove(u(3/4)-key_clearance) fillet(fillet_radius, u(1), 180);
+  ymove(u(1+1/8)-key_clearance) xmove(u(13-5/8)+key_clearance) fillet(fillet_radius, u(1), 270);
+  ymove(u(1+1/8)-key_clearance) xmove(u(7/8)-key_clearance) fillet(fillet_radius, u(1), 180);
 }
 
 module fillet(r, h, rot=0){
   rotate([0,0,180+rot])translate([0.001-r, 0.001-r, -0.001])
-  difference(){
-    cube([r+0.002,r+0.002,h+0.002]);
-    translate([0,0,-0.001]) cylinder(r=r, h=h+0.008);
-  }
+    difference(){
+      cube([r+0.002,r+0.002,h+0.002]);
+      translate([0,0,-0.001]) cylinder(r=r, h=h+0.008);
+    }
 
+}
+
+
+module plate_cutouts(){
+  ymove(-u(1/8)) layout_plate_tabs_row() plate_cutout();
+  ymove(base_dimensions.y+u(1/8)) layout_plate_tabs_row() plate_cutout();
+}
+
+module plate_cutout(){
+  zmove(bottom_thickness-0.1) cylinder(d=u(1/2), h=plate_top);
+}
+
+module plate_for_export(){
+  ymove(u(1/8)+4) projection() plate();
 }
 
 module plate(){
   linear_extrude(plate_thickness) {
     difference(){
       union(){
-        import("swillkb.dxf");
-        ymove(u(4)){
-          xmove(u(1)) plate_tab();
-          xmove(u(4)) plate_tab();
-          xmove(u(9)) plate_tab();
-          xmove(u(12)) plate_tab();
-        }
+        xmove(-0.1) ymove(-0.43) import("swillkb.dxf");
+        layout_plate_tabs() plate_tab();
       }
-      ymove(u(4)){
-          xmove(u(1)) circle(d=4);
-          xmove(u(4)) circle(d=4);
-          xmove(u(9)) circle(d=4);
-          xmove(u(12)) circle(d=4);
-      }
-      ymove(u(1/4)){
-          xmove(u(1/2)) circle(d=4);
-          xmove(u(4+1/8)) circle(d=4);
-          xmove(u(8+7/8)) circle(d=4);
-          xmove(u(12+1/2)) circle(d=4);
-      }
+      layout_plate_tabs() plate_tab_hole();
     }
   }
 }
 
+module layout_plate_tabs(){
+  yflip_copy(cp=[0,u(2+1/8),0]){
+    ymove(-u(1/8)) layout_plate_tabs_row() children();
+  }
+}
+
+module layout_plate_tabs_row() {
+  xspread(sp=[u(5/8),0,0], n=5, spacing=u(12/4)) children();
+}
+
 module plate_tab(){
-  top_half(planar=true) circle(d=8);
+  circle(d=8);
+  ymove(2) square([8,4], center=true);
+}
+
+module plate_tab_hole(){
+  circle(d=plate_hole_diameter);
 }
 
 
