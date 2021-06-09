@@ -18,6 +18,11 @@ bottom_thickness = 4;
 plate_thickness = 1.5;
 plate_depth = 7.6;
 plate_top = min_height + large_radius - plate_depth;
+plate_mount_height = 5;
+shock_absorber_height = 1;
+shock_absorber_diameter = 4;
+shock_absorber_hole_diameter = 2;
+
 
 plate_hole_diameter = 3.8;
 hole_depth = 4.25;
@@ -26,7 +31,7 @@ layout_dimensions = [layout_dimensions(key_layout).x + padding.x * 2, layout_dim
 base_dimensions = [layout_dimensions.x, layout_dimensions.y * cos(tilt)];
 case_dimensions = [ base_dimensions.x + 2*large_radius, base_dimensions.y  + 2 * large_radius * cos(tilt)];
 
-body();
+/* body(); */
 /* zmove(min_height) ymove(u(1/2)) xmove(u(1/2)) xrot(tilt) #plate(); */
 
 /* echo(layout_dimensions); */
@@ -36,6 +41,12 @@ body();
 
 /* xrot(tilt) zmove(min_height)  layout_hole(); */
 /* xrot(tilt) zmove(min_height+large_radius)  plate(); */
+difference(){
+  plate_mounts() shock_absorbers() plate();
+  plate_mount_holes();
+};
+
+
 
 module body(){
     union() {
@@ -129,12 +140,45 @@ module fillet(r, h, rot=0){
 
 
 module plate_cutouts(){
-  ymove(-u(1/8)) layout_plate_tabs_row() plate_cutout();
-  ymove(base_dimensions.y+u(1/8)) layout_plate_tabs_row() plate_cutout();
+  layout_plate_tabs_row() plate_cutout(-u(1/8));
+  layout_plate_tabs_row() plate_cutout(base_dimensions.y + u(1/8));
 }
 
-module plate_cutout(){
-  zmove(bottom_thickness-0.1) cylinder(d=u(1/2), h=plate_top);
+module plate_cutout(y){
+  hull(){
+    ymove(y) cylinder(d=u(1/2), h=0.01);
+    zmove(plate_top) xrot(tilt) ymove(y/cos(tilt)) cylinder(d=u(1/2), h=0.01);
+  }
+}
+
+module plate_mounts(){
+  zmove(-plate_mount_height) {
+    layout_plate_tabs(){
+      cylinder(d=u(1/2), h=plate_mount_height);
+    }
+    children();
+  }
+}
+
+module plate_mount_holes(){
+  zmove(-(plate_mount_height+0.001)) {
+    layout_plate_tabs(){
+      cylinder(d=hole_diameter, h=hole_depth);
+    }
+  }
+}
+
+module shock_absorbers(){
+  zmove(-shock_absorber_height) {
+    layout_plate_tabs(){
+      difference(){
+        cylinder(d=shock_absorber_diameter, h=shock_absorber_height);
+        zmove(-0.01) cylinder(d=shock_absorber_hole_diameter, h=shock_absorber_height+0.02);
+
+      }
+    }
+    children();
+  }
 }
 
 module plate_for_export(){
@@ -142,7 +186,7 @@ module plate_for_export(){
 }
 
 module plate(){
-  linear_extrude(plate_thickness) {
+  zmove(-plate_thickness) linear_extrude(plate_thickness) {
     difference(){
       union(){
         xmove(-0.1) ymove(-0.43) import("swillkb.dxf");
