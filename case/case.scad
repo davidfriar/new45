@@ -4,8 +4,18 @@ use <keyboard.scad>;
 use <functions.scad>;
 
 
+/*
+ * to do :
+ * bottom holes in body
+ * bottom holes in bottom
+ * make bottom just slightly smaller
+ * usb cutout
+ * name and logo
+*/
+
 $fn=60;
 
+test_plane_height = 10;  // [0:0.1:20]
 tilt=6.0;
 padding = [u(1/8), u(1/8)];
 large_radius = u(1/2);
@@ -18,7 +28,7 @@ bottom_thickness = 4;
 plate_thickness = 1.5;
 plate_depth = 7.6;
 plate_top = min_height + large_radius - plate_depth;
-plate_mount_height = 5;
+plate_mount_height = 3;
 shock_absorber_height = 1;
 shock_absorber_diameter = 4;
 shock_absorber_hole_diameter = 2;
@@ -41,25 +51,33 @@ case_dimensions = [ base_dimensions.x + 2*large_radius, base_dimensions.y  + 2 *
 
 /* xrot(tilt) zmove(min_height)  layout_hole(); */
 /* xrot(tilt) zmove(min_height+large_radius)  plate(); */
-difference(){
-  plate_mounts() shock_absorbers() plate();
-  plate_mount_holes();
-};
+/* difference(){ */
+/*   plate_mounts() shock_absorbers() plate() pcb(); */
+/*   plate_mount_holes(); */
+/* }; */
 
+body()shock_absorbers() plate() pcb();
+
+/* plate_mounts() shock_absorbers(); */
 
 
 module body(){
+  color("gray") difference(){
     union() {
-      color("gray") difference(){
+      difference(){
         body_outside();
         body_inside();
         bottom();
-        zmove(min_height) xrot(tilt) layout_hole();
         plate_cutouts();
       }
-
-      color("silver") zmove(large_radius+min_height-9.1) xrot(tilt) plate();
+      zmove(plate_top+shock_absorber_height) xrot(tilt) plate_mounts() ;
     }
+    zmove(plate_top+shock_absorber_height) xrot(tilt) plate_mount_holes() ;
+    zmove(min_height) xrot(tilt) layout_hole();
+
+  }
+
+  zmove(plate_top+shock_absorber_height) xrot(tilt) children();
 }
 
 module body_outside() {
@@ -147,21 +165,19 @@ module plate_cutouts(){
 module plate_cutout(y){
   hull(){
     ymove(y) cylinder(d=u(1/2), h=0.01);
-    zmove(plate_top) xrot(tilt) ymove(y/cos(tilt)) cylinder(d=u(1/2), h=0.01);
+    zmove(plate_top+shock_absorber_height) xrot(tilt) ymove(y/cos(tilt)) cylinder(d=u(1/2), h=0.01);
   }
 }
 
 module plate_mounts(){
-  zmove(-plate_mount_height) {
-    layout_plate_tabs(){
-      cylinder(d=u(1/2), h=plate_mount_height);
-    }
-    children();
+  layout_plate_tabs(){
+    cylinder(d=u(1/2), h=plate_mount_height);
   }
+  children();
 }
 
 module plate_mount_holes(){
-  zmove(-(plate_mount_height+0.001)) {
+  zmove(-0.001) {
     layout_plate_tabs(){
       cylinder(d=hole_diameter, h=hole_depth);
     }
@@ -195,6 +211,7 @@ module plate(){
       layout_plate_tabs() plate_tab_hole();
     }
   }
+  zmove(-5) children();
 }
 
 module layout_plate_tabs(){
@@ -216,7 +233,14 @@ module plate_tab_hole(){
   circle(d=plate_hole_diameter);
 }
 
+module pcb() {
+  translate([-26.25, 103.9425, -1.6 ]) import("../pcb/new45.stl");
+}
 
+
+module test_plane(){
+    zmove(test_plane_height) xrot(tilt) color("red") cube([100, 100, 0.1]);
+}
 
 /* for(key=key_layout){ */
 /*   translate([key_x(key), key_y(key), 0]) square([key_w(key), key_h(key)]); */
