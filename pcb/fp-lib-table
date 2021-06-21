@@ -1,0 +1,6 @@
+(fp_lib_table
+  (lib (name thefortyfive)(type KiCad)(uri /home/david/projects/thefortyfive/art/thefortyfive.pretty)(options "")(descr "")(disabled))
+  (lib (name Switch_Keyboard_Cherry_MX)(type KiCad)(uri ${KIPRJMOD}/keyswitch-kicad-library/modules/Switch_Keyboard_Cherry_MX.pretty)(options "")(descr ""))
+  (lib (name Mounting_Keyboard_Stabilizer)(type KiCad)(uri ${KIPRJMOD}/keyswitch-kicad-library/modules/Mounting_Keyboard_Stabilizer.pretty)(options "")(descr ""))
+  (lib (name daughterboard)(type KiCad)(uri /home/david/projects/new45/daughterboard/daughterboard.pretty)(options "")(descr ""))
+)
