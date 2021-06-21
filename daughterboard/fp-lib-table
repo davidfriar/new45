@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name daughterboard)(type KiCad)(uri /home/david/projects/new45/daughterboard/daughterboard.pretty)(options "")(descr ""))
+  (lib (name nice-nano-kicad)(type KiCad)(uri ${KIPRJMOD}/nice-nano-kicad)(options "")(descr ""))
+)
