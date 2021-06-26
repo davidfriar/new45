@@ -1,4 +1,5 @@
 include <layout.scad>;
+include <daughterboard.scad>;
 include <BOSL/transforms.scad>;
 use <keyboard.scad>;
 use <functions.scad>;
@@ -15,20 +16,20 @@ use <functions.scad>;
 
 $fn=60;
 
-test_plane_height = 10;  // [0:0.1:20]
-tilt=6.0;
+test_plane_height = 10;  // [0:0.1:30]
+tilt=7.0;
 padding = [u(1/8), u(1/8)];
 large_radius = u(1/2);
 medium_radius = u(3/8);
 small_radius = u(1/8);
 fillet_radius = u(1/16);
 key_clearance = u(1/32);
-min_height = 10;
+min_height = 12;
 bottom_thickness = 4;
 plate_thickness = 1.5;
-plate_depth = 7.6;
+plate_depth = 7;
 plate_top = min_height + large_radius - plate_depth;
-plate_mount_height = 3;
+plate_mount_height = 2;
 shock_absorber_height = 1;
 shock_absorber_diameter = 4;
 shock_absorber_hole_diameter = 2;
@@ -41,6 +42,13 @@ layout_dimensions = [layout_dimensions(key_layout).x + padding.x * 2, layout_dim
 base_dimensions = [layout_dimensions.x, layout_dimensions.y * cos(tilt)];
 case_dimensions = [ base_dimensions.x + 2*large_radius, base_dimensions.y  + 2 * large_radius * cos(tilt)];
 
+bottom_hole_diameter = 2.4;
+bottom_hole_height = bottom_thickness + 1;
+bottom_hole_countersink_diameter = 4;
+bottom_hole_countersink_height = 2;
+
+daughterboard_hole_depth = 2.5;
+daughterboard_mount_height = 2;
 /* body(); */
 /* zmove(min_height) ymove(u(1/2)) xmove(u(1/2)) xrot(tilt) #plate(); */
 
@@ -56,10 +64,26 @@ case_dimensions = [ base_dimensions.x + 2*large_radius, base_dimensions.y  + 2 *
 /*   plate_mount_holes(); */
 /* }; */
 
-body()shock_absorbers() plate() pcb();
+/* body()shock_absorbers() plate() pcb(); */
+/* zmove(bottom_thickness) ymove(u(2))xmove(u(5.5)) daughterboard(); */
+
+/* bottom() daughterboard(); */
+/* daughterboard_hole(); */
+/* test_plane(); */
+/* nice_nano(); */
+/* daughterboard(); */
 
 /* plate_mounts() shock_absorbers(); */
 
+/* body()shock_absorbers() plate(); */
+/* bottom(); */
+
+/* bottom()daughterboard(); */
+body() shock_absorbers() plate();
+bottom() daughterboard();
+/* button_cutout(); */
+
+/* usb_cutout(); */
 
 module body(){
   color("gray") difference(){
@@ -67,9 +91,16 @@ module body(){
       difference(){
         body_outside();
         body_inside();
-        bottom();
+        bottom(clearance=0.25, holes=false);
         plate_cutouts();
+        insert_holes();
+        ymove(u(2))xmove(u(5.5)) daughterboard_cutout();
+        usb_cutout();
+        button_cutout();
+
+
       }
+      insert_mounts();
       zmove(plate_top+shock_absorber_height) xrot(tilt) plate_mounts() ;
     }
     zmove(plate_top+shock_absorber_height) xrot(tilt) plate_mount_holes() ;
@@ -119,12 +150,22 @@ module corner(){
   zmove(-(large_radius-small_radius)) rotate([0,0,180]) rotate_extrude(angle=90) translate([large_radius-small_radius, large_radius-small_radius]) circle(r=small_radius);
 }
 
-module bottom(){
-  zmove(-0.01) hull(){
-    cylinder(r=medium_radius, h=bottom_thickness);
-    translate([base_dimensions.x, 0, 0]) cylinder(r=medium_radius, h=bottom_thickness);
-    translate([0, base_dimensions.y, 0]) cylinder(r=medium_radius, h=bottom_thickness);
-    translate([base_dimensions.x, base_dimensions.y, 0]) cylinder(r=medium_radius, h=bottom_thickness);
+module bottom(clearance=0, holes=true){
+  zmove(-0.01) difference() {
+    hull(){
+      cylinder(r=medium_radius+clearance, h=bottom_thickness);
+      translate([base_dimensions.x, 0, 0]) cylinder(r=medium_radius+clearance, h=bottom_thickness);
+      translate([0, base_dimensions.y, 0]) cylinder(r=medium_radius+clearance, h=bottom_thickness);
+      translate([base_dimensions.x, base_dimensions.y, 0]) cylinder(r=medium_radius+clearance, h=bottom_thickness);
+    }
+    if(holes) {
+      zmove(-0.5) layout_bottom_holes() bottom_hole();
+      zmove(bottom_thickness-(daughterboard_hole_depth)) ymove(u(2))xmove(u(5.5)) daughterboard_hole();
+    }
+  }
+  if(holes){
+    zmove(bottom_thickness - daughterboard_hole_depth ) ymove(u(2))xmove(u(5.5)) daughterboard_mounts();
+    zmove(bottom_thickness - daughterboard_hole_depth + daughterboard_mount_height) ymove(u(2))xmove(u(5.5)) children();
   }
 }
 
@@ -234,17 +275,88 @@ module plate_tab_hole(){
 }
 
 module pcb() {
-  translate([-26.25, 103.9425, -1.6 ]) import("../pcb/new45.stl");
+  translate([-26.25, 103.9425, -1.6 ])  import("../pcb/new45.stl");
 }
+
+
 
 
 module test_plane(){
     zmove(test_plane_height) xrot(tilt) color("red") cube([100, 100, 0.1]);
 }
 
-/* for(key=key_layout){ */
-/*   translate([key_x(key), key_y(key), 0]) square([key_w(key), key_h(key)]); */
-/* } */
+module layout_bottom_holes(){
+  adjust = 0.5;
+  yspread(sp=[0,u(-1/4)+adjust,0], n=2, spacing=base_dimensions.y+u(1/2)-2*adjust)
+    xspread(sp=[u(2+1/8),0,0], n=4, spacing=u(3)) children();
+  ymove(base_dimensions.y/2) {
+    xmove(adjust) xmove(-u(1/4)) children();
+    xmove(-adjust) xmove(base_dimensions.x+u(1/4))children();
+  }
+}
+
+module bottom_hole() {
+  cylinder(d=bottom_hole_diameter, h=bottom_hole_height);
+  cylinder(d=bottom_hole_countersink_diameter, h=bottom_hole_countersink_height);
+}
+
+module insert_holes() {
+   zmove(bottom_thickness-0.1) layout_bottom_holes() insert_hole();
+}
+
+module insert_hole() {
+  cylinder(d=hole_diameter, hole_depth);
+}
+
+module insert_mounts(){
+  zmove(bottom_thickness) layout_bottom_holes() insert_mount();
+}
+
+module insert_mount() {
+  difference(){
+  cylinder(d=hole_diameter+3, hole_depth + 2);
+  zmove(-0.1) insert_hole();
+  }
+}
+
+module daughterboard_cutout(){
+   daughterboard_hole(height=15);
+}
+
+module daughterboard_hole(height=4) {
+   radius=u(1/8);
+   clearance=0.5;
+   hull()
+     yspread(sp=[0, radius, 0], n=2, spacing=u(2.25))
+       xspread(sp=[radius, 0, 0],n=2, spacing=u(2))
+         cylinder(r=radius+clearance, h=height);
+
+}
+
+module daughterboard_mounts(){
+   xmove(u(1/4)) ymove(u(1/4)) daughterboard_mount();
+   xmove(u(2)) ymove(u(1/4)) daughterboard_mount();
+   xmove(u(1/4)) ymove(u(2+1/4)) daughterboard_mount();
+   xmove(u(2)) ymove(u(1+3/4)) daughterboard_mount();
+}
+
+module daughterboard_mount(){
+   difference(){
+     cylinder(d=u(11/16), h=daughterboard_mount_height);
+     zmove(-1) cylinder(d=2.4, h=daughterboard_mount_height+2);
+     zmove(0.25) cylinder(d=4.5, h=2, $fn=6);
+   }
+}
 
 
-/* color("red") keyboard_bounding_box(key_layout); */
+module usb_cutout(){
+  zmove(bottom_thickness + 2.8) xmove(base_dimensions.x/2) ymove(base_dimensions.y + 9) zrot(-90) translate([0, -usb_sheath_width/2, -usb_sheath_height/2]) zrot(90)xrot(90) {
+    translate([usb_sheath_offset, usb_sheath_offset, 0]) rounded_rect([usb_plug_width, usb_plug_height, usb_plug_length],radius=1);
+    translate([0,0, -usb_sheath_length]) rounded_rect([usb_sheath_width, usb_sheath_height, usb_sheath_length],radius=3);
+  }
+}
+
+
+module button_cutout() {
+  zmove(8.65) xmove(base_dimensions.x/2+14.95) ymove(base_dimensions.y+7) xrot(90) zmove(-5) cylinder(d=3.5, h=10);
+}
